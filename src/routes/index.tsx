@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Box, Download, Layers, RotateCcw, RotateCw, Upload } from "lucide-react";
+import { Box, Download, Layers, RotateCcw, RotateCw, Upload, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { NinjaStage, type StageApi, type ViewMode } from "@/components/ninja-stage";
 import { pickImageFile } from "@/lib/mesh/from-file";
+import { generateTrellisGlb } from "@/lib/mesh/trellis";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -16,9 +17,10 @@ function Home() {
   const [puff, setPuff] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
   const [status, setStatus] = useState<string | null>("Figür hazırlanıyor…");
-  const [busy, setBusy] = useState<"glb" | "stl" | "import" | null>(null);
+  const [busy, setBusy] = useState<"glb" | "stl" | "import" | "trellis" | null>(null);
   const [api, setApi] = useState<StageApi | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [hasImported, setHasImported] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCount = useRef(0);
   const pendingFile = useRef<File | null>(null);
@@ -36,6 +38,7 @@ function Home() {
       setStatus("Görsel okunuyor…");
       try {
         await api.importImage(file);
+        setHasImported(true);
         setStatus(null);
       } catch (err) {
         const message = err instanceof Error ? err.message : "İçe aktarılamadı.";
@@ -47,6 +50,24 @@ function Home() {
     },
     [api],
   );
+
+  const runTrellis = useCallback(async () => {
+    if (!api) return;
+    setBusy("trellis");
+    setStatus("TRELLIS başlıyor…");
+    try {
+      const png = await api.getSpritePng();
+      const glb = await generateTrellisGlb(png, setStatus);
+      await api.loadTrellisGlb(glb);
+      setStatus(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "TRELLIS başarısız.";
+      setStatus(message);
+      window.setTimeout(() => setStatus(null), 4200);
+    } finally {
+      setBusy(null);
+    }
+  }, [api]);
 
   useEffect(() => {
     if (!api || !pendingFile.current) return;
@@ -138,7 +159,7 @@ function Home() {
           </p>
           <h1 className="mt-1 font-semibold tracking-tight text-2xl sm:text-3xl">Shinobi 3D</h1>
           <p className="mt-1 hidden max-w-sm text-sm leading-snug text-muted sm:block">
-            2D görseli içe aktar veya bırak. Kabartma figür üret, indir.
+            2D içe aktar → kabartma. İstersen TRELLIS ile gerçek 3D.
           </p>
         </header>
 
@@ -162,6 +183,16 @@ function Home() {
             >
               <Upload />
               {busy === "import" ? "Üretiliyor…" : "İçe aktar"}
+            </Button>
+            <Button
+              type="button"
+              variant="muted"
+              className="mt-2 w-full"
+              disabled={!ready || !hasImported || busy !== null}
+              onClick={() => void runTrellis()}
+            >
+              <Wand2 />
+              {busy === "trellis" ? "TRELLIS çalışıyor…" : "Gerçek 3D · TRELLIS"}
             </Button>
 
             <div className="mt-3 flex rounded-md bg-bg p-1">

@@ -9,7 +9,7 @@ import { fileStem, imageDataFromFile } from "@/lib/mesh/from-file";
 import { buildInflatedMesh } from "@/lib/mesh/inflate";
 import { imageDataToTextureCanvas, loadImageData } from "@/lib/mesh/load-image";
 import { prepareSprite } from "@/lib/mesh/prepare-sprite";
-import { toImageData, type RgbaImage } from "@/lib/mesh/rgba";
+import { fromImageData, toImageData, type RgbaImage } from "@/lib/mesh/rgba";
 import { sampleImages, type SampleGrid } from "@/lib/mesh/sample";
 import { buildVoxelInstances } from "@/lib/mesh/voxel";
 import type { StageApi, ViewMode } from "@/components/ninja-stage";
@@ -112,6 +112,8 @@ export function createNinjaSession(
   let running = true;
   let exportStem = "shinobi";
   let generation = 0;
+  let lastSprite: RgbaImage | null = null;
+  let showingTrellis = false;
 
   const reliefMat = new THREE.MeshStandardMaterial({
     roughness: 0.48,
@@ -155,6 +157,8 @@ export function createNinjaSession(
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     texture.needsUpdate = true;
     exportStem = name;
+    lastSprite = color;
+    showingTrellis = false;
     gridsReady = true;
     rebuild();
     camera.position.set(1.15, 1.15, 2.55);
@@ -163,7 +167,7 @@ export function createNinjaSession(
   }
 
   function rebuild() {
-    if (!gridsReady) return;
+    if (!gridsReady || showingTrellis) return;
     const puff = hooks.getPuff();
     const mode = hooks.getMode();
     clearFigure();
@@ -227,8 +231,14 @@ export function createNinjaSession(
   }
 
   const api: StageApi = {
-    setMode: () => scheduleRebuild(),
-    setPuff: () => scheduleRebuild(),
+    setMode: () => {
+      showingTrellis = false;
+      scheduleRebuild();
+    },
+    setPuff: () => {
+      if (showingTrellis) return;
+      scheduleRebuild();
+    },
     setAutoRotate: (value) => {
       controls.autoRotate = value;
     },
@@ -249,6 +259,33 @@ export function createNinjaSession(
       if (!running || mine !== generation) return;
       applySprite(prepared.color, prepared.depth, fileStem(file.name));
       hooks.onStatus(null);
+    },
+    getSpritePng: async () => {
+      if (!lastSprite) throw new Error("Önce bir 2D görsel içe aktar.");
+      const canvas = imageDataToTextureCanvas(toImageData(lastSprite));
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG yazılamadı"))), "image/png");
+      });
+      return blob;
+    },
+    loadTrellisGlb: async (buffer) => {
+      const loader = new GLTFLoader();
+      const gltf = await loader.parseAsync(buffer, "");
+      showingTrellis = true;
+      clearFigure();
+      prefab = gltf.scene;
+      fitToPlatform(prefab);
+      prefab.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.isMesh) {
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+        }
+      });
+      figure.add(prefab);
+      camera.position.set(1.15, 1.15, 2.55);
+      controls.target.set(0, 0.88, 0);
+      controls.update();
     },
     downloadGLB: async () => {
       const root = exportObject();
@@ -325,6 +362,7 @@ export function createNinjaSession(
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
       texture.needsUpdate = true;
+      lastSprite = fromImageData(color);
       gridsReady = true;
       const needsLive =
         hooks.getMode() !== "relief" || Math.abs(hooks.getPuff() - 1) > 0.001;
@@ -366,6 +404,19 @@ function yieldFrame() {
   return new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve());
   });
+}
+
+function fitToPlatform(root: THREE.Object3D) {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new THREE.Vector3());
+  const height = Math.max(size.y, 1e-4);
+  root.scale.multiplyScalar(1.72 / height);
+  root.updateMatrixWorld(true);
+  box.setFromObject(root);
+  root.position.x -= (box.min.x + box.max.x) / 2;
+  root.position.z -= (box.min.z + box.max.z) / 2;
+  root.position.y -= box.min.y;
 }
 
 function makeSoftShadow() {
