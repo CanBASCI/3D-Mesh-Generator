@@ -5,8 +5,11 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { downloadBlob } from "@/lib/mesh/download";
+import { fileStem, imageDataFromFile } from "@/lib/mesh/from-file";
 import { buildInflatedMesh } from "@/lib/mesh/inflate";
 import { imageDataToTextureCanvas, loadImageData } from "@/lib/mesh/load-image";
+import { prepareSprite } from "@/lib/mesh/prepare-sprite";
+import { toImageData, type RgbaImage } from "@/lib/mesh/rgba";
 import { sampleImages, type SampleGrid } from "@/lib/mesh/sample";
 import { buildVoxelInstances } from "@/lib/mesh/voxel";
 import type { StageApi, ViewMode } from "@/components/ninja-stage";
@@ -107,6 +110,8 @@ export function createNinjaSession(
   let rebuildTimer = 0;
   let frame = 0;
   let running = true;
+  let exportStem = "shinobi";
+  let generation = 0;
 
   const reliefMat = new THREE.MeshStandardMaterial({
     roughness: 0.48,
@@ -138,6 +143,23 @@ export function createNinjaSession(
       voxelMesh.dispose();
       voxelMesh = null;
     }
+  }
+
+  function applySprite(color: RgbaImage, depth: RgbaImage, name: string) {
+    gridRelief = sampleImages(toImageData(color), toImageData(depth), 120);
+    gridVoxel = sampleImages(toImageData(color), toImageData(depth), 56);
+    const canvas = imageDataToTextureCanvas(toImageData(color));
+    texture?.dispose();
+    texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    texture.needsUpdate = true;
+    exportStem = name;
+    gridsReady = true;
+    rebuild();
+    camera.position.set(1.15, 1.15, 2.55);
+    controls.target.set(0, 0.88, 0);
+    controls.update();
   }
 
   function rebuild() {
@@ -215,6 +237,19 @@ export function createNinjaSession(
       controls.target.set(0, 0.88, 0);
       controls.update();
     },
+    importImage: async (file) => {
+      const mine = ++generation;
+      hooks.onStatus("Görsel okunuyor…");
+      await yieldFrame();
+      const raw = await imageDataFromFile(file);
+      if (!running || mine !== generation) return;
+      hooks.onStatus("3D üretiliyor…");
+      await yieldFrame();
+      const prepared = prepareSprite(raw);
+      if (!running || mine !== generation) return;
+      applySprite(prepared.color, prepared.depth, fileStem(file.name));
+      hooks.onStatus(null);
+    },
     downloadGLB: async () => {
       const root = exportObject();
       const exporter = new GLTFExporter();
@@ -226,14 +261,14 @@ export function createNinjaSession(
         result instanceof ArrayBuffer
           ? new Blob([result], { type: "model/gltf-binary" })
           : new Blob([JSON.stringify(result)], { type: "model/gltf+json" });
-      downloadBlob(blob, "shinobi.glb");
+      downloadBlob(blob, `${exportStem}.glb`);
     },
     downloadSTL: async () => {
       const root = exportObject();
       const exporter = new STLExporter();
       const result = exporter.parse(root, { binary: true });
       const bytes = result instanceof ArrayBuffer ? result : new TextEncoder().encode(String(result));
-      downloadBlob(new Blob([bytes], { type: "model/stl" }), "shinobi.stl");
+      downloadBlob(new Blob([bytes], { type: "model/stl" }), `${exportStem}.stl`);
     },
     dispose: () => {},
   };
@@ -262,7 +297,7 @@ export function createNinjaSession(
     try {
       const loader = new GLTFLoader();
       const gltf = await loader.loadAsync("/shinobi.glb");
-      if (!running) return;
+      if (!running || generation !== 0) return;
       prefab = gltf.scene;
       prefab.traverse((obj) => {
         const mesh = obj as THREE.Mesh;
@@ -282,7 +317,7 @@ export function createNinjaSession(
         loadImageData("/ninja.png"),
         loadImageData("/ninja-depth.png"),
       ]);
-      if (!running) return;
+      if (!running || generation !== 0) return;
       gridRelief = sampleImages(color, depth, 120);
       gridVoxel = sampleImages(color, depth, 56);
       const canvas = imageDataToTextureCanvas(color);
@@ -325,6 +360,12 @@ export function createNinjaSession(
 
   api.dispose = dispose;
   return { dispose };
+}
+
+function yieldFrame() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
 }
 
 function makeSoftShadow() {

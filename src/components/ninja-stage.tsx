@@ -7,6 +7,7 @@ export type StageApi = {
   setPuff: (puff: number) => void;
   setAutoRotate: (value: boolean) => void;
   resetCamera: () => void;
+  importImage: (file: File) => Promise<void>;
   downloadGLB: () => Promise<void>;
   downloadSTL: () => Promise<void>;
   dispose?: () => void;
