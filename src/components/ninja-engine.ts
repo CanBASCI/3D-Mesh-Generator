@@ -37,10 +37,13 @@ export function createNinjaSession(
   renderer.shadowMap.enabled = true;
   renderer.setClearColor(0x0c0c0e, 1);
   host.appendChild(renderer.domElement);
+  renderer.domElement.style.position = "absolute";
+  renderer.domElement.style.inset = "0";
   renderer.domElement.style.width = "100%";
   renderer.domElement.style.height = "100%";
   renderer.domElement.style.display = "block";
   renderer.domElement.style.outline = "none";
+  renderer.domElement.style.touchAction = "none";
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(

@@ -143,7 +143,15 @@ function Home() {
   );
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-bg text-fg">
+    <main className="fixed inset-0 overflow-hidden bg-bg text-fg">
+      <input
+        ref={inputRef}
+        type="file"
+        accept={FILE_ACCEPT}
+        tabIndex={-1}
+        className="pointer-events-none fixed top-0 left-0 h-px w-px opacity-0"
+        onChange={onPick}
+      />
       <NinjaStage
         mode={mode}
         puff={puff}
@@ -152,7 +160,7 @@ function Home() {
         onStatus={setStatus}
       />
 
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between overflow-hidden p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
         <header className="pointer-events-auto max-w-xl shrink-0">
           <p className="text-xs font-medium tracking-[0.18em] text-muted" lang="en">
             FIGURE STUDIO
@@ -166,14 +174,7 @@ function Home() {
         <div className="pointer-events-none flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <p className="hidden text-xs text-faint sm:block">Sürükle-bırak · çevir · yakınlaş</p>
 
-          <section className="pointer-events-auto w-full rounded-xl border border-border bg-surface/95 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)] sm:w-auto sm:min-w-[22rem]">
-            <input
-              ref={inputRef}
-              type="file"
-              accept={FILE_ACCEPT}
-              className="sr-only"
-              onChange={onPick}
-            />
+          <section className="pointer-events-auto max-h-[calc(100dvh-6.5rem)] w-full touch-manipulation overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface/95 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)] sm:w-auto sm:min-w-[22rem]">
             <Button
               type="button"
               variant="outline"
