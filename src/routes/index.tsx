@@ -24,6 +24,7 @@ function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCount = useRef(0);
   const pendingFile = useRef<File | null>(null);
+  const shellRef = useRef<HTMLElement>(null);
 
   const ready = Boolean(api) && busy !== "import";
 
@@ -68,6 +69,30 @@ function Home() {
       setBusy(null);
     }
   }, [api]);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const fit = () => {
+      const vv = window.visualViewport;
+      const w = vv?.width ?? window.innerWidth;
+      const h = vv?.height ?? window.innerHeight;
+      const x = vv?.offsetLeft ?? 0;
+      const y = vv?.offsetTop ?? 0;
+      shell.style.width = `${w}px`;
+      shell.style.height = `${h}px`;
+      shell.style.transform = `translate(${x}px, ${y}px)`;
+    };
+    fit();
+    window.visualViewport?.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("scroll", fit);
+    window.addEventListener("resize", fit);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("scroll", fit);
+      window.removeEventListener("resize", fit);
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.style.height = "";
@@ -149,7 +174,7 @@ function Home() {
   );
 
   return (
-    <main className="absolute inset-0 overflow-hidden bg-bg text-fg">
+    <main ref={shellRef} className="fixed top-0 left-0 h-dvh w-full overflow-hidden bg-bg text-fg">
       <NinjaStage
         mode={mode}
         puff={puff}
@@ -158,8 +183,8 @@ function Home() {
         onStatus={setStatus}
       />
 
-      <div className="pointer-events-none absolute inset-0 z-10 flex h-full flex-col overflow-hidden px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-        <header className="pointer-events-auto max-w-xl shrink-0">
+      <div className="pointer-events-none absolute inset-0 z-10 flex h-full flex-col overflow-hidden px-3 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] sm:px-6">
+        <header className="pointer-events-auto max-w-xl shrink-0 pt-2">
           <p className="text-xs font-medium tracking-[0.18em] text-muted" lang="en">
             FIGURE STUDIO
           </p>
@@ -169,7 +194,7 @@ function Home() {
           </p>
         </header>
 
-        <div className="pointer-events-none mt-auto flex w-full flex-col gap-2">
+        <div className="pointer-events-none mt-auto flex w-full flex-col gap-2 pb-2">
           <p className="pointer-events-none text-[11px] text-faint">
             Bir parmak çevir · iki parmak kaydır · kıstırarak yakınlaş
           </p>

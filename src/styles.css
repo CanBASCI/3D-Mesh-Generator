@@ -36,8 +36,6 @@
   }
 
   body {
-    position: absolute;
-    inset: 0;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
