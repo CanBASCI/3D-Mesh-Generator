@@ -1,28 +1,25 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { humanizeTrellisError, parseGradioSse } from "./trellis.ts";
+import { humanizeTrellisError, parseQueueMessage, queueStatus } from "./trellis.ts";
 
-describe("trellis sse", () => {
-  it("reads the complete event payload", () => {
-    const text = [
-      "event: estimation",
-      'data: {"rank":0,"queue_size":2}',
-      "",
-      "event: complete",
-      'data: [{"url":"https://example.com/a.glb"}]',
-      "",
-    ].join("\n");
-    const parsed = parseGradioSse(text);
-    assert.equal(parsed.queue, "Kuyruk 1/2");
-    const data = parsed.data as { url: string }[];
-    assert.equal(data[0]?.url, "https://example.com/a.glb");
+describe("trellis queue", () => {
+  it("parses a completed queue event", () => {
+    const msg = parseQueueMessage(
+      'data: {"msg":"process_completed","event_id":"abc","success":true,"output":{"data":[{"url":"https://example.com/a.glb"}]}}',
+    );
+    assert.equal(msg?.success, true);
+    assert.equal(msg?.event_id, "abc");
   });
 
-  it("maps GPU quota errors", () => {
-    assert.match(humanizeTrellisError("ZeroGPU quota exceeded"), /kuyruğu/i);
+  it("formats queue position", () => {
+    assert.equal(queueStatus({ msg: "estimation", rank: 0, queue_size: 2 }), "Kuyruk 1/2");
   });
 
-  it("throws when the stream never completes", () => {
-    assert.throws(() => parseGradioSse("event: heartbeat\ndata: null\n"), /yanıt vermedi/);
+  it("maps the broken call-api 404", () => {
+    assert.match(humanizeTrellisError("404: Not Found"), /oturumu koptu/i);
+  });
+
+  it("ignores heartbeat frames", () => {
+    assert.equal(parseQueueMessage("data: ALIVE"), null);
   });
 });
