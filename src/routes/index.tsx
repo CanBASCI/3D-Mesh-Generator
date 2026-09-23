@@ -152,6 +152,15 @@ function Home() {
         onStatus={setStatus}
       />
 
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40"
+      >
+        <div className="absolute inset-0 backdrop-blur-md [-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_70%)] [mask-image:linear-gradient(to_bottom,black_0%,transparent_70%)]" />
+        <div className="absolute inset-0 backdrop-blur-2xl [-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_38%)] [mask-image:linear-gradient(to_bottom,black_0%,transparent_38%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-bg/35 to-transparent" />
+      </div>
+
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col overflow-hidden">
         <header className="pointer-events-auto max-w-xl shrink-0 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-6">
           <p className="text-xs font-medium tracking-[0.18em] text-muted" lang="en">
