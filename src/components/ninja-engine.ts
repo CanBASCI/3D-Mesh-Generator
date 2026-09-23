@@ -270,6 +270,15 @@ export function createNinjaSession(
       controls.target.set(0, 0.88, 0);
       controls.update();
     },
+    setBackground: (hex) => {
+      const color = new THREE.Color(hex);
+      renderer.setClearColor(color, 1);
+      scene.background = color;
+      const mat = platform.material as THREE.MeshStandardMaterial;
+      mat.color.copy(color);
+      if (color.r + color.g + color.b > 1.6) mat.color.multiplyScalar(0.9);
+      else mat.color.offsetHSL(0, 0, 0.035);
+    },
     importImage: async (file) => {
       const mine = ++generation;
       hooks.onStatus("Görsel okunuyor…");

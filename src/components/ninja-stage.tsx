@@ -8,6 +8,7 @@ export type StageApi = {
   setPuff: (puff: number) => void;
   setAutoRotate: (value: boolean) => void;
   resetCamera: () => void;
+  setBackground: (hex: string) => void;
   importImage: (file: File) => Promise<void>;
   getSpritePng: () => Promise<Blob>;
   loadTrellisGlb: (buffer: ArrayBuffer) => Promise<void>;

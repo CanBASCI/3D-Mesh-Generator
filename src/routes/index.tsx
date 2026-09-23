@@ -12,6 +12,8 @@ export const Route = createFileRoute("/")({ component: Home });
 const FILE_ACCEPT =
   "image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.heic,.heif,.avif,.tif,.tiff";
 
+const SCENE_COLORS = ["#0c0c0e", "#3c3f46", "#c9c6bf", "#f3f0ea"] as const;
+
 function Home() {
   const [mode, setMode] = useState<ViewMode>("relief");
   const [puff, setPuff] = useState(1);
@@ -21,9 +23,14 @@ function Home() {
   const [api, setApi] = useState<StageApi | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [hasImported, setHasImported] = useState(false);
+  const [sceneColor, setSceneColor] = useState<string>(SCENE_COLORS[0]);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCount = useRef(0);
   const pendingFile = useRef<File | null>(null);
+
+  useEffect(() => {
+    api?.setBackground(sceneColor);
+  }, [api, sceneColor]);
 
   const ready = Boolean(api) && busy !== "import";
 
@@ -220,6 +227,26 @@ function Home() {
                 icon={<Box />}
                 label="Voxel"
               />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-muted">Sahne</span>
+              <div className="flex gap-2">
+                {SCENE_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-label={color === SCENE_COLORS[0] ? "Koyu sahne" : "Açık sahne"}
+                    aria-pressed={sceneColor === color}
+                    onClick={() => setSceneColor(color)}
+                    className={cn(
+                      "size-7 rounded-full border",
+                      sceneColor === color ? "border-fg" : "border-white/20",
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
             </div>
 
             <label className="mt-3 block">
