@@ -37,6 +37,12 @@ export function createNinjaSession(
   renderer.shadowMap.enabled = true;
   renderer.setClearColor(0x0c0c0e, 1);
   host.appendChild(renderer.domElement);
+  host.style.position = "fixed";
+  host.style.top = "0";
+  host.style.left = "0";
+  host.style.width = "100vw";
+  host.style.height = "100lvh";
+  host.style.zIndex = "0";
   renderer.domElement.style.position = "absolute";
   renderer.domElement.style.inset = "0";
   renderer.domElement.style.width = "100%";
@@ -320,10 +326,13 @@ export function createNinjaSession(
     const h = Math.max(host.clientHeight, 1);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    renderer.setSize(w, h, false);
   }
   const ro = new ResizeObserver(resize);
   ro.observe(host);
+  window.visualViewport?.addEventListener("resize", resize);
+  window.addEventListener("resize", resize);
+  resize();
 
   const tick = () => {
     if (!running) return;
@@ -341,6 +350,8 @@ export function createNinjaSession(
     cancelAnimationFrame(frame);
     window.clearTimeout(rebuildTimer);
     ro.disconnect();
+    window.visualViewport?.removeEventListener("resize", resize);
+    window.removeEventListener("resize", resize);
     controls.dispose();
     clearFigure();
     voxelGeo.dispose();

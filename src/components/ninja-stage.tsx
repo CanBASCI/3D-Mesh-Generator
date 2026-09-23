@@ -82,5 +82,5 @@ export function NinjaStage({ mode, puff, autoRotate, onReady, onStatus }: Props)
     apiRef.current?.setAutoRotate(autoRotate);
   }, [autoRotate]);
 
-  return <div ref={rootRef} className="absolute inset-0 z-0 touch-none" />;
+  return <div ref={rootRef} className="fixed top-0 left-0 z-0 h-[100lvh] w-[100vw] touch-none" />;
 }
