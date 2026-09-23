@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Box, Download, Layers, RotateCcw, RotateCw, Upload, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { NinjaStage, type StageApi, type ViewMode } from "@/components/ninja-stage";
 import { pickImageFile } from "@/lib/mesh/from-file";
 import { generateTrellisGlb } from "@/lib/mesh/trellis";
@@ -144,14 +144,6 @@ function Home() {
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-bg text-fg">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={FILE_ACCEPT}
-        tabIndex={-1}
-        className="pointer-events-none fixed top-0 left-0 h-px w-px opacity-0"
-        onChange={onPick}
-      />
       <NinjaStage
         mode={mode}
         puff={puff}
@@ -175,16 +167,24 @@ function Home() {
           <p className="hidden text-xs text-faint sm:block">Sürükle-bırak · çevir · yakınlaş</p>
 
           <section className="pointer-events-auto max-h-[calc(100dvh-6.5rem)] w-full touch-manipulation overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface/95 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)] sm:w-auto sm:min-w-[22rem]">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled={busy === "import"}
-              onClick={() => inputRef.current?.click()}
+            <label
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "relative w-full cursor-pointer",
+                busy === "import" && "pointer-events-none opacity-40",
+              )}
             >
               <Upload />
               {busy === "import" ? "Üretiliyor…" : "İçe aktar"}
-            </Button>
+              <input
+                ref={inputRef}
+                type="file"
+                accept={FILE_ACCEPT}
+                disabled={busy === "import"}
+                className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                onChange={onPick}
+              />
+            </label>
             <Button
               type="button"
               variant="muted"
