@@ -15,8 +15,12 @@ describe("trellis queue", () => {
     assert.equal(queueStatus({ msg: "estimation", rank: 0, queue_size: 2 }), "Kuyruk 1/2");
   });
 
-  it("maps the broken call-api 404", () => {
-    assert.match(humanizeTrellisError("404: Not Found"), /oturumu koptu/i);
+  it("explains a spent ZeroGPU quota", () => {
+    const text = humanizeTrellisError(
+      "You have exceeded your ZeroGPU quota (120s requested vs. 162s left). Try again in 23:59:20.",
+    );
+    assert.match(text, /GPU hakkı bitti/);
+    assert.match(text, /23:59:20/);
   });
 
   it("ignores heartbeat frames", () => {

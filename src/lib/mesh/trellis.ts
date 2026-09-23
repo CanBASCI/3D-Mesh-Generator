@@ -6,6 +6,7 @@ type QueueMsg = {
   rank?: number;
   queue_size?: number;
   success?: boolean;
+  progress_data?: { desc?: string | null }[];
   output?: { data?: unknown[]; error?: string | null };
 };
 
@@ -18,6 +19,8 @@ export function parseQueueMessage(line: string): QueueMsg | null {
 }
 
 export function queueStatus(msg: QueueMsg): string | null {
+  const step = msg.progress_data?.find((item) => item?.desc)?.desc;
+  if (msg.msg === "progress" && step) return step;
   if (msg.msg === "estimation" && msg.rank != null) {
     const size = Math.max(msg.queue_size ?? 0, msg.rank + 1);
     return `Kuyruk ${msg.rank + 1}/${size}`;
@@ -28,14 +31,23 @@ export function queueStatus(msg: QueueMsg): string | null {
 
 export function humanizeTrellisError(raw: string): string {
   const text = raw.replace(/^"|"$/g, "");
+  const quota = text.match(/try again in\s+([0-9:]+)/i);
+  if (/quota|exceeded your zerogpu/i.test(text)) {
+    return quota
+      ? `TRELLIS’in ücretsiz GPU hakkı bitti. ${quota[1]} sonra tekrar dene.`
+      : "TRELLIS’in ücretsiz GPU hakkı bitti. Yarın tekrar dene.";
+  }
   if (text === "404: Not Found" || /session not found/i.test(text)) {
     return "TRELLIS oturumu koptu. Tekrar dene.";
   }
-  if (/gpu|quota|zero.?gpu|busy/i.test(text)) {
+  if (/gpu|zero.?gpu|busy/i.test(text)) {
     return "TRELLIS GPU kuyruğu dolu. Biraz sonra tekrar dene.";
   }
   if (/log in|login|token|unauthorized/i.test(text)) {
     return "TRELLIS Space şu an giriş istiyor. Biraz sonra tekrar dene.";
+  }
+  if (/model durumu gelmedi|model not found|could not find model/i.test(text)) {
+    return "TRELLIS model üretemedi. Biraz sonra tekrar dene.";
   }
   return text.slice(0, 220) || "TRELLIS başarısız.";
 }
@@ -138,7 +150,7 @@ async function queueCall(
 
   const ac = new AbortController();
   const headers = new AbortController();
-  const headerTimer = window.setTimeout(() => headers.abort(), 20_000);
+  const headerTimer = window.setTimeout(() => headers.abort(), 90_000);
   let stream: Response;
   try {
     stream = await fetch(
@@ -161,7 +173,11 @@ async function queueCall(
       if (settled) return;
       settled = true;
       if (!msg.success) {
-        reject(new Error(humanizeTrellisError(msg.output?.error || "TRELLIS adımı başarısız.")));
+        const raw =
+          typeof msg.output?.error === "string"
+            ? msg.output.error
+            : "TRELLIS adımı başarısız.";
+        reject(new Error(humanizeTrellisError(raw)));
       } else {
         resolve(msg.output?.data ?? []);
       }
