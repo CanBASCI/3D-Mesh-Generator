@@ -67,7 +67,7 @@ export function createNinjaSession(
   controls.screenSpacePanning = true;
   controls.panSpeed = 1.1;
   controls.minDistance = 1.35;
-  controls.maxDistance = 5.4;
+  controls.maxDistance = 14;
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = Math.PI * 0.58;
   controls.target.set(0, 0.88, 0);
