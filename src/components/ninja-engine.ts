@@ -40,12 +40,21 @@ export function createNinjaSession(
   host.style.position = "fixed";
   host.style.left = "0";
   host.style.right = "0";
-  host.style.top = "0";
-  host.style.bottom = "auto";
-  host.style.width = "100%";
-  host.style.height = "100lvh";
   host.style.margin = "0";
   host.style.zIndex = "0";
+
+  function placeHost() {
+    const vv = window.visualViewport;
+    const h = Math.max(
+      window.innerHeight,
+      document.documentElement.clientHeight,
+      vv ? vv.height + vv.offsetTop : 0,
+    );
+    host.style.top = "0px";
+    host.style.width = "100%";
+    host.style.height = `${Math.ceil(h) + 48}px`;
+  }
+  placeHost();
   renderer.domElement.style.position = "absolute";
   renderer.domElement.style.inset = "0";
   renderer.domElement.style.width = "100%";
@@ -325,6 +334,7 @@ export function createNinjaSession(
   };
 
   function resize() {
+    placeHost();
     const w = Math.max(host.clientWidth, 1);
     const h = Math.max(host.clientHeight, 1);
     camera.aspect = w / h;
@@ -334,6 +344,7 @@ export function createNinjaSession(
   const ro = new ResizeObserver(resize);
   ro.observe(host);
   window.visualViewport?.addEventListener("resize", resize);
+  window.visualViewport?.addEventListener("scroll", resize);
   window.addEventListener("resize", resize);
   resize();
 
@@ -354,6 +365,7 @@ export function createNinjaSession(
     window.clearTimeout(rebuildTimer);
     ro.disconnect();
     window.visualViewport?.removeEventListener("resize", resize);
+    window.visualViewport?.removeEventListener("scroll", resize);
     window.removeEventListener("resize", resize);
     controls.dispose();
     clearFigure();

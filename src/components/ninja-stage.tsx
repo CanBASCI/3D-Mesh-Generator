@@ -90,7 +90,7 @@ export function NinjaStage({ mode, puff, autoRotate, onReady, onStatus }: Props)
   if (!mounted) return null;
 
   return createPortal(
-    <div ref={setHost} className="pointer-events-auto fixed top-0 right-0 left-0 z-0 h-[100lvh] w-full touch-none" />,
+    <div ref={setHost} className="pointer-events-auto fixed top-0 left-0 z-0 w-full touch-none" />,
     document.body,
   );
 }

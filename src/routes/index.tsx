@@ -172,7 +172,7 @@ function Home() {
           </p>
         </header>
 
-        <div className="pointer-events-none mt-auto flex w-full flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+        <div className="pointer-events-none mt-auto flex w-full flex-col gap-2 px-3 pb-3 sm:px-6">
           <p className="pointer-events-none text-[11px] text-faint">
             Bir parmak çevir · iki parmak kaydır · kıstırarak yakınlaş
           </p>
