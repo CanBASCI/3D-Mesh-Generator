@@ -16,7 +16,7 @@ function Home() {
   const [mode, setMode] = useState<ViewMode>("relief");
   const [puff, setPuff] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [status, setStatus] = useState<string | null>("Figür hazırlanıyor…");
+  const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<"glb" | "stl" | "import" | "trellis" | null>(null);
   const [api, setApi] = useState<StageApi | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -31,7 +31,7 @@ function Home() {
     async (file: File) => {
       if (!api) {
         pendingFile.current = file;
-        setStatus("Figür hazırlanıyor…");
+        setStatus("Sahne açılıyor…");
         return;
       }
       setBusy("import");

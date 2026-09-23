@@ -7,9 +7,9 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { downloadBlob } from "@/lib/mesh/download";
 import { fileStem, imageDataFromFile } from "@/lib/mesh/from-file";
 import { buildInflatedMesh } from "@/lib/mesh/inflate";
-import { imageDataToTextureCanvas, loadImageData } from "@/lib/mesh/load-image";
+import { imageDataToTextureCanvas } from "@/lib/mesh/load-image";
 import { prepareSprite } from "@/lib/mesh/prepare-sprite";
-import { fromImageData, toImageData, type RgbaImage } from "@/lib/mesh/rgba";
+import { toImageData, type RgbaImage } from "@/lib/mesh/rgba";
 import { sampleImages, type SampleGrid } from "@/lib/mesh/sample";
 import { buildVoxelInstances } from "@/lib/mesh/voxel";
 import type { StageApi, ViewMode } from "@/components/ninja-stage";
@@ -328,54 +328,8 @@ export function createNinjaSession(
     renderer.render(scene, camera);
   };
   frame = requestAnimationFrame(tick);
-
-  hooks.onStatus("Figür hazırlanıyor…");
-  void (async () => {
-    try {
-      const loader = new GLTFLoader();
-      const gltf = await loader.loadAsync("/shinobi.glb");
-      if (!running || generation !== 0) return;
-      prefab = gltf.scene;
-      prefab.traverse((obj) => {
-        const mesh = obj as THREE.Mesh;
-        if (mesh.isMesh) {
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-        }
-      });
-      figure.add(prefab);
-      hooks.onStatus(null);
-      hooks.onReady(api);
-    } catch (err) {
-      console.error(err);
-    }
-    try {
-      const [color, depth] = await Promise.all([
-        loadImageData("/ninja.png"),
-        loadImageData("/ninja-depth.png"),
-      ]);
-      if (!running || generation !== 0) return;
-      gridRelief = sampleImages(color, depth, 120);
-      gridVoxel = sampleImages(color, depth, 56);
-      const canvas = imageDataToTextureCanvas(color);
-      texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      texture.needsUpdate = true;
-      lastSprite = fromImageData(color);
-      gridsReady = true;
-      const needsLive =
-        hooks.getMode() !== "relief" || Math.abs(hooks.getPuff() - 1) > 0.001;
-      if (!prefab || needsLive) {
-        rebuild();
-        hooks.onStatus(null);
-        hooks.onReady(api);
-      }
-    } catch (err) {
-      console.error(err);
-      if (!prefab) hooks.onStatus("Figür yüklenemedi.");
-    }
-  })();
+  hooks.onStatus(null);
+  hooks.onReady(api);
 
   function dispose() {
     running = false;
