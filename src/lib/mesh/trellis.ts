@@ -61,14 +61,25 @@ function fileData(path: string, name: string): FileData {
 type FnMap = Map<string, number>;
 
 async function loadFnMap(): Promise<FnMap> {
-  const res = await fetch(`${TRELLIS_SPACE}/config`);
-  if (!res.ok) throw new Error("TRELLIS Space kapalı.");
-  const cfg = (await res.json()) as { dependencies?: { api_name?: string | null }[] };
-  const map: FnMap = new Map();
-  cfg.dependencies?.forEach((dep, index) => {
-    if (dep.api_name) map.set(dep.api_name, index);
-  });
-  return map;
+  const ac = new AbortController();
+  const timer = window.setTimeout(() => ac.abort(), 20_000);
+  try {
+    const res = await fetch(`${TRELLIS_SPACE}/config`, { signal: ac.signal });
+    if (!res.ok) throw new Error("TRELLIS Space kapalı.");
+    const cfg = (await res.json()) as { dependencies?: { api_name?: string | null }[] };
+    const map: FnMap = new Map();
+    cfg.dependencies?.forEach((dep, index) => {
+      if (dep.api_name) map.set(dep.api_name, index);
+    });
+    return map;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("TRELLIS Space uyanmadı. Tekrar dene.");
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 function fnIndex(map: FnMap, name: string): number {
@@ -113,20 +124,38 @@ async function queueCall(
   data: unknown[],
   sessionHash: string,
   onStatus?: (text: string) => void,
+  stallMs = 45_000,
 ): Promise<unknown[]> {
+  const join = await fetch(`${TRELLIS_SPACE}/gradio_api/queue/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data, fn_index: fn, session_hash: sessionHash }),
+  });
+  if (!join.ok) throw new Error(humanizeTrellisError(await join.text()));
+  const body = (await join.json()) as { event_id?: string };
+  if (!body.event_id) throw new Error("TRELLIS kuyruğa alınamadı.");
+  const eventId = body.event_id;
+
   const ac = new AbortController();
-  const stream = await fetch(
-    `${TRELLIS_SPACE}/gradio_api/queue/data?session_hash=${encodeURIComponent(sessionHash)}`,
-    { signal: ac.signal },
-  );
+  const headers = new AbortController();
+  const headerTimer = window.setTimeout(() => headers.abort(), 20_000);
+  let stream: Response;
+  try {
+    stream = await fetch(
+      `${TRELLIS_SPACE}/gradio_api/queue/data?session_hash=${encodeURIComponent(sessionHash)}`,
+      { signal: headers.signal },
+    );
+  } catch {
+    throw new Error("TRELLIS kuyruğu açılmadı. Space uyanıyor olabilir, tekrar dene.");
+  } finally {
+    window.clearTimeout(headerTimer);
+  }
   if (!stream.ok) throw new Error(humanizeTrellisError(await stream.text()));
 
   let buffer = "";
-  let eventId = "";
-  const pending: QueueMsg[] = [];
+  let settled = false;
   let finish!: (msg: QueueMsg) => void;
   let fail!: (err: Error) => void;
-  let settled = false;
   const done = new Promise<unknown[]>((resolve, reject) => {
     finish = (msg) => {
       if (settled) return;
@@ -145,16 +174,20 @@ async function queueCall(
       ac.abort();
     };
   });
-  ac.signal.addEventListener("abort", () => {
-    if (!settled) fail(new Error("TRELLIS zaman aşımı. Space meşgul olabilir."));
-  });
+
+  let stall = window.setTimeout(() => {
+    fail(new Error("TRELLIS yanıt vermedi. Space dolu olabilir, tekrar dene."));
+  }, stallMs);
+  const bump = () => {
+    window.clearTimeout(stall);
+    stall = window.setTimeout(() => {
+      fail(new Error("TRELLIS yanıt vermedi. Space dolu olabilir, tekrar dene."));
+    }, stallMs);
+  };
 
   const take = (msg: QueueMsg) => {
-    if (!eventId) {
-      pending.push(msg);
-      return;
-    }
     if (msg.event_id && msg.event_id !== eventId) return;
+    bump();
     const status = queueStatus(msg);
     if (status) onStatus?.(status);
     if (msg.msg === "process_completed" && msg.event_id === eventId) finish(msg);
@@ -178,30 +211,11 @@ async function queueCall(
     ac.signal,
   );
 
-  const join = await fetch(`${TRELLIS_SPACE}/gradio_api/queue/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data, fn_index: fn, session_hash: sessionHash }),
-  });
-  if (!join.ok) {
-    const err = new Error(humanizeTrellisError(await join.text()));
-    fail(err);
-    throw err;
-  }
-  const body = (await join.json()) as { event_id?: string };
-  if (!body.event_id) {
-    const err = new Error("TRELLIS kuyruğa alınamadı.");
-    fail(err);
-    throw err;
-  }
-  eventId = body.event_id;
-  for (const msg of pending.splice(0)) take(msg);
-
-  const timeout = window.setTimeout(() => fail(new Error("TRELLIS zaman aşımı. Space meşgul olabilir.")), 180_000);
   try {
     return await done;
   } finally {
-    window.clearTimeout(timeout);
+    window.clearTimeout(stall);
+    ac.abort();
   }
 }
 
@@ -230,46 +244,67 @@ export async function generateTrellisGlb(
 ): Promise<ArrayBuffer> {
   const sessionHash = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const heart = new AbortController();
-  const beat = await fetch(`${TRELLIS_SPACE}/gradio_api/heartbeat/${sessionHash}`, {
-    signal: heart.signal,
-  });
-  pump(beat, () => {}, heart.signal);
+  const started = Date.now();
+  const phase = { text: "TRELLIS’e bağlanılıyor" };
+  const note = (text: string) => {
+    phase.text = text;
+    onStatus?.(`${text} · ${Math.max(0, Math.round((Date.now() - started) / 1000))}s`);
+  };
+  const timer = window.setInterval(() => note(phase.text), 1000);
 
   try {
-    onStatus?.("TRELLIS bağlanıyor…");
-    const fns = await loadFnMap();
-    await queueCall(fnIndex(fns, "start_session"), [], sessionHash, onStatus);
+    note("TRELLIS’e bağlanılıyor");
+    const beatAc = new AbortController();
+    const beatTimer = window.setTimeout(() => beatAc.abort(), 15_000);
+    const beat = await fetch(`${TRELLIS_SPACE}/gradio_api/heartbeat/${sessionHash}`, {
+      signal: beatAc.signal,
+    }).finally(() => window.clearTimeout(beatTimer));
+    heart.signal.addEventListener("abort", () => beatAc.abort());
+    pump(beat, () => {}, heart.signal);
 
-    onStatus?.("Görsel yükleniyor…");
+    note("Space hazırlanıyor");
+    const fns = await loadFnMap();
+    await queueCall(fnIndex(fns, "start_session"), [], sessionHash, note, 20_000);
+
+    note("Görsel yükleniyor");
     const image = fileData(await uploadPng(png, sessionHash), "sprite.png");
 
-    onStatus?.("Arka plan temizleniyor…");
-    const pre = await queueCall(fnIndex(fns, "preprocess_image"), [image], sessionHash, onStatus);
+    note("Arka plan temizleniyor");
+    const pre = await queueCall(fnIndex(fns, "preprocess_image"), [image], sessionHash, note, 40_000);
     const prepared = (pre[0] as FileData | undefined) ?? image;
 
-    onStatus?.("TRELLIS 3D üretiyor… bu 30–90 sn sürebilir");
+    note("TRELLIS 3D üretiyor");
     const generated = await queueCall(
       fnIndex(fns, "image_to_3d"),
       [prepared, 0, "512", 7.5, 0.7, 12, 5, 7.5, 0.5, 12, 3, 1, 0, 12, 3],
       sessionHash,
-      onStatus,
+      note,
+      120_000,
     );
     const state = generated[0];
     if (!state) throw new Error("TRELLIS model durumu gelmedi.");
 
-    onStatus?.("GLB çıkarılıyor…");
+    note("GLB çıkarılıyor");
     const extracted = await queueCall(
       fnIndex(fns, "extract_glb"),
       [state, 200000, 1024],
       sessionHash,
-      onStatus,
+      note,
+      90_000,
     );
     const url = firstFileUrl(extracted);
     if (!url) throw new Error("TRELLIS GLB döndürmedi.");
+    note("Model indiriliyor");
     const glbRes = await fetch(url);
     if (!glbRes.ok) throw new Error("GLB indirilemedi.");
     return glbRes.arrayBuffer();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("TRELLIS açılmadı. Birkaç saniye sonra tekrar dene.");
+    }
+    throw err;
   } finally {
+    window.clearInterval(timer);
     heart.abort();
   }
 }

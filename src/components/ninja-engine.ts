@@ -57,7 +57,9 @@ export function createNinjaSession(
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.enablePan = false;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.panSpeed = 1.1;
   controls.minDistance = 1.35;
   controls.maxDistance = 5.4;
   controls.minPolarAngle = 0.25;
