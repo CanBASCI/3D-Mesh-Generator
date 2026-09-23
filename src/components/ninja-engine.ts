@@ -38,10 +38,10 @@ export function createNinjaSession(
   renderer.setClearColor(0x0c0c0e, 1);
   host.appendChild(renderer.domElement);
   host.style.position = "fixed";
-  host.style.top = "0";
-  host.style.left = "0";
-  host.style.width = "100vw";
-  host.style.height = "100lvh";
+  host.style.inset = "0";
+  host.style.width = "100%";
+  host.style.height = "100%";
+  host.style.margin = "0";
   host.style.zIndex = "0";
   renderer.domElement.style.position = "absolute";
   renderer.domElement.style.inset = "0";

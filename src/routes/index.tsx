@@ -143,7 +143,7 @@ function Home() {
   );
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-bg text-fg">
+    <main className="pointer-events-none fixed inset-0 z-10 overflow-visible bg-transparent text-fg">
       <NinjaStage
         mode={mode}
         puff={puff}

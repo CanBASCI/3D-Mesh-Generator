@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type ViewMode = "relief" | "voxel";
 
@@ -26,7 +27,8 @@ type Props = {
 };
 
 export function NinjaStage({ mode, puff, autoRotate, onReady, onStatus }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
   const apiRef = useRef<StageApi | null>(null);
   const modeRef = useRef(mode);
   const puffRef = useRef(puff);
@@ -37,7 +39,10 @@ export function NinjaStage({ mode, puff, autoRotate, onReady, onStatus }: Props)
   rotateRef.current = autoRotate;
 
   useEffect(() => {
-    const host = rootRef.current;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!host || !enginePromise) return;
     let disposed = false;
     let dispose = () => {};
@@ -66,9 +71,9 @@ export function NinjaStage({ mode, puff, autoRotate, onReady, onStatus }: Props)
       dispose();
       apiRef.current = null;
     };
-    // Mount once — live values flow through refs.
+    // Host mounts once. Live values are read from the refs above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [host]);
 
   useEffect(() => {
     apiRef.current?.setMode(mode);
@@ -82,5 +87,10 @@ export function NinjaStage({ mode, puff, autoRotate, onReady, onStatus }: Props)
     apiRef.current?.setAutoRotate(autoRotate);
   }, [autoRotate]);
 
-  return <div ref={rootRef} className="fixed top-0 left-0 z-0 h-[100lvh] w-[100vw] touch-none" />;
+  if (!mounted) return null;
+
+  return createPortal(
+    <div ref={setHost} className="pointer-events-auto fixed inset-0 z-0 touch-none" />,
+    document.body,
+  );
 }
