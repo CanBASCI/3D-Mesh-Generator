@@ -70,23 +70,9 @@ function Home() {
   }, [api]);
 
   useEffect(() => {
-    const fit = () => {
-      const vv = window.visualViewport;
-      const h = Math.round(vv?.height ?? window.innerHeight);
-      const top = Math.round(vv?.offsetTop ?? 0);
-      document.documentElement.style.height = `${h}px`;
-      document.body.style.height = `${h}px`;
-      document.body.style.top = `${top}px`;
-    };
-    fit();
-    window.visualViewport?.addEventListener("resize", fit);
-    window.visualViewport?.addEventListener("scroll", fit);
-    window.addEventListener("resize", fit);
-    return () => {
-      window.visualViewport?.removeEventListener("resize", fit);
-      window.visualViewport?.removeEventListener("scroll", fit);
-      window.removeEventListener("resize", fit);
-    };
+    document.documentElement.style.height = "";
+    document.body.style.height = "";
+    document.body.style.top = "";
   }, []);
 
   useEffect(() => {
@@ -172,7 +158,7 @@ function Home() {
         onStatus={setStatus}
       />
 
-      <div className="pointer-events-none absolute inset-0 z-10 flex h-full flex-col justify-between overflow-hidden p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6">
+      <div className="pointer-events-none absolute inset-0 z-10 flex h-full flex-col overflow-hidden px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
         <header className="pointer-events-auto max-w-xl shrink-0">
           <p className="text-xs font-medium tracking-[0.18em] text-muted" lang="en">
             FIGURE STUDIO
@@ -183,12 +169,12 @@ function Home() {
           </p>
         </header>
 
-        <div className="pointer-events-none flex min-h-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="pointer-events-none mt-auto flex w-full flex-col gap-2">
           <p className="pointer-events-none text-[11px] text-faint">
             Bir parmak çevir · iki parmak kaydır · kıstırarak yakınlaş
           </p>
 
-          <section className="pointer-events-auto max-h-[48%] w-full touch-manipulation overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface/95 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)] sm:max-h-[70%] sm:w-auto sm:min-w-[22rem]">
+          <section className="pointer-events-auto w-full touch-manipulation rounded-xl border border-border bg-surface/95 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)] sm:ml-auto sm:w-auto sm:min-w-[22rem]">
             <label
               className={cn(
                 buttonVariants({ variant: "outline" }),
