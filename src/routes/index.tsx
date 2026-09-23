@@ -163,12 +163,12 @@ function Home() {
           </p>
         </header>
 
-        <div className="pointer-events-none mt-auto flex w-full flex-col">
-          <p className="pointer-events-none px-3 pb-2 text-[11px] text-faint sm:px-6">
+        <div className="pointer-events-none mt-auto flex w-full flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+          <p className="pointer-events-none text-[11px] text-faint">
             Bir parmak çevir · iki parmak kaydır · kıstırarak yakınlaş
           </p>
 
-          <section className="pointer-events-auto w-full touch-manipulation rounded-t-2xl border border-b-0 border-border bg-surface/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(0,0,0,0.35)] sm:px-6">
+          <section className="pointer-events-auto w-full touch-manipulation rounded-xl border border-border bg-surface/95 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
             <label
               className={cn(
                 buttonVariants({ variant: "outline" }),
